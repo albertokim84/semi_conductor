@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>중학교 기술 · 반도체와 회로 시뮬레이터</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      word-break: keep-all;
+    }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #090e1a;
+      color: #f8fafc;
+      height: 100dvh;
+      max-height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* 상하 폭을 컴팩트하게 제한하여 한 화면에 아담하게 들어오도록 설정 */
+    .app-shell {
+      width: 100%;
+      max-width: 1260px;
+      height: 100dvh;
+      max-height: 600px;
+      display: flex;
+      flex-direction: column;
+      background-color: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+    }
+    @media (max-height: 620px) {
+      .app-shell {
+        max-height: 100dvh;
+        border-radius: 0;
+        border: none;
+      }
+    }
+    /* 슬라이더 커스텀 */
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: #fbbf24;
+      border: 3px solid #fff;
+      cursor: pointer;
+      margin-top: -6px;
+      box-shadow: 0 0 10px rgba(251, 191, 36, 0.85);
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 8px;
+      cursor: pointer;
+      background: linear-gradient(90deg, #334155 0%, #0284c7 50%, #f59e0b 100%);
+      border-radius: 4px;
+    }
+    input[type=range]:focus {
+      outline: none;
+    }
+    .tab-btn {
+      transition: all 0.18s ease;
+      line-height: 1.2;
+    }
+    .tab-active {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
+      font-weight: 900;
+      border-color: #60a5fa;
+      box-shadow: 0 0 12px rgba(37, 99, 235, 0.45);
+    }
+    .tab-inactive {
+      background-color: #1e293b;
+      color: #94a3b8;
+      border-color: #334155;
+      font-weight: 700;
+    }
+    .tab-inactive:hover {
+      background-color: #334155;
+      color: #f1f5f9;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-shell">
+    <!-- 상단 컴팩트 헤더 & 탭 네비게이션 (모든 괄호 줄바꿈 적용) -->
+    <header class="shrink-0 bg-slate-900 border-b border-slate-800 px-3.5 py-1.5 flex items-center justify-between z-10">
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-base">⚡</span>
+        <div class="leading-tight">
+          <h1 class="text-sm sm:text-base font-black tracking-tight text-white">중학교 기술 · 반도체와 회로 시뮬레이터</h1>
+          <p class="text-[11px] text-slate-400 hidden sm:block">전지의 극성과 입력 신호에 따른 전하 이동 및 기기 작동을 관찰해 보세요.</p>
+        </div>
+      </div>
+      <nav class="flex gap-1.5">
+        <button onclick="switchTab(1)" id="tab1" class="tab-btn tab-active px-2.5 sm:px-3.5 py-1 rounded-xl text-xs border text-center">
+          1. 반도체 원리
+          <span class="block text-[10px] font-medium opacity-90">(N형·P형 반도체)</span>
+        </button>
+        <button onclick="switchTab(2)" id="tab2" class="tab-btn tab-inactive px-2.5 sm:px-3.5 py-1 rounded-xl text-xs border text-center">
+          2. 다이오드 원리
+          <span class="block text-[10px] font-medium opacity-80">(PN 접합과 정류)</span>
+        </button>
+        <button onclick="switchTab(3)" id="tab3" class="tab-btn tab-inactive px-2.5 sm:px-3.5 py-1 rounded-xl text-xs border text-center">
+          3. 트랜지스터 원리
+          <span class="block text-[10px] font-medium opacity-80">(스위치와 증폭)</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- 메인 콘텐츠 영역 (상하 폭을 줄여 컴팩트하게 1화면 고정 배치) -->
+    <main class="flex-1 flex flex-col md:flex-row min-h-0 p-2 sm:p-2.5 gap-2.5 bg-slate-950 overflow-hidden">
+      
+      <!-- 좌측: 회로 시뮬레이션 캔버스 영역 (760 x 340 컴팩트 비율) -->
+      <section class="flex-[2.2] relative bg-slate-900 rounded-xl border border-slate-800 shadow-lg overflow-hidden flex items-center justify-center min-h-0 p-1.5">
+        <canvas id="simCanvas" width="760" height="340" class="w-full h-full object-contain block"></canvas>
+
+        <!-- 상단 상태 배지 (괄호 줄바꿈 적용) -->
+        <div id="canvasBadge" class="absolute top-2 left-2.5 bg-slate-950/90 px-2.5 py-1 rounded-lg border border-slate-700/80 text-[11px] font-bold text-sky-300 leading-tight shadow pointer-events-none">
+          1. 불순물 반도체의 전하 이동
+          <span class="block text-[10px] text-slate-400 font-normal">(왼쪽 +극 연결, 오른쪽 -극 연결)</span>
+        </div>
+
+        <!-- 범례 (우측 상단, 괄호 줄바꿈 적용) -->
+        <div class="absolute top-2 right-2.5 bg-slate-950/90 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center gap-3 text-[10px] text-slate-300 leading-tight pointer-events-none">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-sky-500 inline-block border border-white/70 shrink-0"></span>
+            <div class="text-center">전자<span class="block text-[9px] text-sky-300">(- 전하)</span></div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-rose-500/30 border-2 border-rose-500 inline-block shrink-0"></span>
+            <div class="text-center">정공<span class="block text-[9px] text-rose-300">(+ 빈자리)</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 우측: 조작 및 원리 설명 패널 (컴팩트 카드 구성) -->
+      <aside class="flex-1 md:max-w-[330px] lg:max-w-[350px] shrink-0 flex flex-col min-h-0 overflow-hidden">
+        
+        <!-- ================= [탭 1] 반도체 원리 컨트롤 ================= -->
+        <div id="panel-tab1" class="flex-1 flex flex-col justify-between bg-slate-900 rounded-xl p-3 border border-slate-800 shadow-lg overflow-hidden">
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+              <div class="leading-tight">
+                <h2 class="text-sm font-black text-sky-400">1. 불순물 반도체 실험</h2>
+                <span class="block text-[10px] text-slate-400">(전하 운반자의 이동 방향 비교)</span>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 font-bold border border-sky-500/30 text-center leading-tight">
+                불순물 도핑
+                <span class="block text-[9px] opacity-80">(Doping)</span>
+              </span>
+            </div>
+
+            <!-- 반도체 종류 선택 (괄호 줄바꿈) -->
+            <div>
+              <label class="text-[11px] font-bold text-slate-400 block mb-1">① 반도체 종류 선택</label>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button onclick="setSemiType('N')" id="btn-semi-n" class="py-1.5 px-2 rounded-xl font-black text-xs bg-sky-600 text-white border-2 border-sky-400 shadow-md leading-tight">
+                  N형 반도체
+                  <span class="block text-[10px] font-medium opacity-95 mt-0.5">(자유 전자 왼쪽 이동)</span>
+                </button>
+                <button onclick="setSemiType('P')" id="btn-semi-p" class="py-1.5 px-2 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 border-2 border-slate-700 hover:bg-slate-700 leading-tight">
+                  P형 반도체
+                  <span class="block text-[10px] font-normal opacity-85 mt-0.5">(정공 오른쪽 이동)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 전원 스위치 조작 -->
+            <div>
+              <label class="text-[11px] font-bold text-slate-400 block mb-1">② 전원 스위치 조작</label>
+              <button onclick="toggleSemiPower()" id="btn-semi-pwr" class="w-full py-1.5 px-3 rounded-xl font-black text-xs bg-emerald-600 text-white border border-emerald-400 leading-tight">
+                ⚡ 직류 전원 스위치 켜짐
+                <span class="block text-[10px] font-normal opacity-95">(왼쪽 +극 인가, 오른쪽 -극 인가)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 결과 상태 및 설명 (괄호 줄바꿈) -->
+          <div class="bg-slate-950 rounded-xl p-2.5 border border-slate-800 flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-slate-400">꼬마전구 작동 상태</span>
+              <span id="t1-bulb-status" class="text-[11px] font-black text-amber-400 text-right leading-tight">
+                💡 전구 켜짐
+                <span class="block text-[10px] font-normal text-amber-200">(전류 정상 흐름)</span>
+              </span>
+            </div>
+            <div class="h-px bg-slate-800 my-0.5"></div>
+            <div id="t1-desc-title" class="text-xs text-sky-300 font-black leading-tight">
+              N형 반도체
+              <span class="block text-[10px] font-semibold text-sky-400/90">(자유 전자가 왼쪽 +극으로 이동)</span>
+            </div>
+            <p id="t1-desc-body" class="text-[11px] text-slate-300 leading-relaxed mt-0.5">
+              규소에 인을 섞어 남는 <b>자유 전자</b>가 생겼습니다. 음전하를 띤 자유 전자는 오른쪽 <b>-극에서 밀려나 왼쪽 +극 방향(←)</b>으로 이동하며 전류를 흐르게 합니다.
+            </p>
+          </div>
+        </div>
+
+        <!-- ================= [탭 2] 다이오드 컨트롤 ================= -->
+        <div id="panel-tab2" class="flex-1 hidden flex-col justify-between bg-slate-900 rounded-xl p-3 border border-slate-800 shadow-lg overflow-hidden">
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+              <div class="leading-tight">
+                <h2 class="text-sm font-black text-emerald-400">2. PN 접합 다이오드 회로</h2>
+                <span class="block text-[10px] text-slate-400">(전지의 연결 방향과 정류 작용)</span>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-bold border border-emerald-500/30 text-center leading-tight">
+                정류 작용
+                <span class="block text-[9px] opacity-80">(일방통행 밸브)</span>
+              </span>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-bold text-slate-400 block mb-1">전지 극성 연결 방식 선택</label>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button onclick="setDiodeMode('forward')" id="btn-diode-fwd" class="py-2 px-2 rounded-xl font-black text-xs bg-emerald-600 text-white border-2 border-emerald-400 shadow-md leading-tight text-center">
+                  ✅ 순방향 연결
+                  <span class="block text-[10px] font-medium opacity-95 mt-0.5">(P형에 +, N형에 -)</span>
+                </button>
+                <button onclick="setDiodeMode('reverse')" id="btn-diode-rev" class="py-2 px-2 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 border-2 border-slate-700 hover:bg-slate-700 leading-tight text-center">
+                  ⛔ 역방향 연결
+                  <span class="block text-[10px] font-normal opacity-85 mt-0.5">(P형에 -, N형에 +)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 다이오드 상태 요약 (괄호 줄바꿈) -->
+          <div class="bg-slate-950 rounded-xl p-2.5 border border-slate-800 flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-slate-400">꼬마전구 작동 상태</span>
+              <span id="t2-bulb-status" class="text-[11px] font-black text-amber-400 text-right leading-tight">
+                💡 전구 켜짐
+                <span class="block text-[10px] font-normal text-amber-200">(순방향 전류 통과)</span>
+              </span>
+            </div>
+            <div class="h-px bg-slate-800 my-0.5"></div>
+            <div id="t2-desc-title" class="text-xs text-emerald-300 font-black leading-tight">
+              순방향 전압 연결
+              <span class="block text-[10px] font-semibold text-emerald-400/90">(장벽 소멸 및 꼬마전구 점등)</span>
+            </div>
+            <p id="t2-desc-body" class="text-[11px] text-slate-300 leading-relaxed mt-0.5">
+              P형의 <b>정공은 오른쪽(→)</b>으로, N형의 <b>전자는 왼쪽(←)</b>으로 이동해 접합면에서 만납니다. 전지의 -극에서 나온 전자가 꼬마전구를 통과해 <b>환하게 불이 켜집니다.</b>
+            </p>
+          </div>
+        </div>
+
+        <!-- ================= [탭 3] 트랜지스터 컨트롤 ================= -->
+        <div id="panel-tab3" class="flex-1 hidden flex-col justify-between bg-slate-900 rounded-xl p-3 border border-slate-800 shadow-lg overflow-hidden">
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-1">
+              <div class="leading-tight">
+                <h2 class="text-sm font-black text-amber-400">3. 트랜지스터 증폭 회로</h2>
+                <span class="block text-[10px] text-slate-400">(작은 베이스 신호로 큰 전류 제어)</span>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-bold border border-amber-500/30 text-center leading-tight">
+                NPN 접합
+                <span class="block text-[9px] opacity-80">(스위치·증폭)</span>
+              </span>
+            </div>
+
+            <!-- 마이크 입력 슬라이더 -->
+            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+              <div class="flex justify-between items-center text-[11px] font-bold mb-1">
+                <div class="text-slate-300 leading-tight">
+                  🎤 마이크 입력 세기
+                  <span class="block text-[9px] text-slate-400 font-normal">(베이스 인가 신호)</span>
+                </div>
+                <div id="t3-slider-label" class="text-amber-400 font-black text-right leading-tight">
+                  0%
+                  <span class="block text-[9px] font-normal text-slate-400">(신호 없음)</span>
+                </div>
+              </div>
+              <input type="range" id="trSlider" min="0" max="100" value="0" oninput="setTransistorSignal(this.value)">
+              <div class="grid grid-cols-3 gap-1 mt-1.5">
+                <button onclick="setTransistorSignal(0)" class="py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300 border border-slate-700 leading-tight">
+                  신호 끔
+                  <span class="block text-[9px] font-normal opacity-80">(0%)</span>
+                </button>
+                <button onclick="setTransistorSignal(40)" class="py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-amber-300 border border-amber-500/30 leading-tight">
+                  작은 소리
+                  <span class="block text-[9px] font-normal opacity-80">(40%)</span>
+                </button>
+                <button onclick="setTransistorSignal(100)" class="py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-sky-300 border border-sky-500/30 leading-tight">
+                  큰 소리
+                  <span class="block text-[9px] font-normal opacity-80">(100%)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 실시간 전류 계기판 -->
+            <div class="grid grid-cols-2 gap-1.5">
+              <div class="bg-slate-950 py-1.5 px-2 rounded-xl border border-slate-800 text-center leading-tight">
+                <span class="text-[10px] text-slate-300 font-bold block">베이스 입력 전류</span>
+                <span class="text-[9px] text-slate-500 block mb-0.5">(소형 전지·마이크)</span>
+                <strong id="t3-ib-val" class="text-xs font-black text-emerald-400">0.00 mA</strong>
+              </div>
+              <div class="bg-slate-950 py-1.5 px-2 rounded-xl border border-slate-800 text-center leading-tight">
+                <span class="text-[10px] text-slate-300 font-bold block">컬렉터 증폭 전류</span>
+                <span class="text-[9px] text-slate-500 block mb-0.5">(대형 전지·스피커)</span>
+                <strong id="t3-ic-val" class="text-xs font-black text-sky-400">0.0 mA</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- 트랜지스터 작동 설명 -->
+          <div class="bg-slate-950 rounded-xl p-2 border border-slate-800 flex flex-col gap-0.5">
+            <div id="t3-desc-title" class="text-xs text-rose-400 font-black leading-tight">
+              스위치 꺼짐 상태
+              <span class="block text-[10px] font-semibold text-rose-400/85">(베이스 장벽에 의해 전류 차단)</span>
+            </div>
+            <p id="t3-desc-body" class="text-[11px] text-slate-300 leading-relaxed mt-0.5">
+              마이크 신호가 없으면 베이스 문이 닫혀 있습니다. 대형 전지가 연결되어 있어도 에미터의 전자가 넘어가지 못해 <b>스피커가 울리지 않습니다.</b>
+            </p>
+          </div>
+        </div>
+
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById('simCanvas');
+      const ctx = canvas.getContext('2d');
+
+      // 컴팩트한 캔버스 논리 해상도 (760 x 340)
+      const W = 760;
+      const H = 340;
+
+      // 시뮬레이터 상태 관리
+      const state = {
+        tab: 1,
+        time: 0,
+
+        // 탭 1: 반도체 원리 (왼쪽 = +극, 오른쪽 = -극 고정)
+        semiType: 'N',        // 'N' | 'P'
+        semiPower: true,      // 전원 ON/OFF
+        semiProgress: 0,      // 0.0 ~ 1.0 단조 증가 진행도
+
+        // 탭 2: 다이오드 회로
+        diodeMode: 'forward', // 'forward' (순방향: 좌+, 우-) | 'reverse' (역방향: 좌-, 우+)
+        barrierWidth: 8,
+        diodeProgress: 0,
+
+        // 탭 3: 트랜지스터 증폭 회로
+        baseSignal: 0,        // 0 ~ 100
+        baseParticles: [],
+        collParticles: []
+      };
+
+      // 트랜지스터 입자 초기화
+      function initTransistorParticles() {
+        state.baseParticles = [];
+        state.collParticles = [];
+        for (let i = 0; i < 14; i++) {
+          state.baseParticles.push({ prog: i / 14 });
+        }
+        for (let i = 0; i < 60; i++) {
+          state.collParticles.push({
+            prog: i / 60,
+            laneOffset: (i % 5 - 2) * 9
+          });
+        }
+      }
+      initTransistorParticles();
+
+      // ==================== UI 이벤트 핸들러 (전역 연결) ====================
+      window.switchTab = function(t) {
+        state.tab = t;
+        [1, 2, 3].forEach(i => {
+          const btn = document.getElementById(`tab${i}`);
+          const panel = document.getElementById(`panel-tab${i}`);
+          if (i === t) {
+            btn.className = 'tab-btn tab-active px-2.5 sm:px-3.5 py-1 rounded-xl text-xs border text-center';
+            panel.classList.remove('hidden');
+            panel.classList.add('flex');
+          } else {
+            btn.className = 'tab-btn tab-inactive px-2.5 sm:px-3.5 py-1 rounded-xl text-xs border text-center';
+            panel.classList.add('hidden');
+            panel.classList.remove('flex');
+          }
+        });
+
+        const badge = document.getElementById('canvasBadge');
+        if (t === 1) {
+          badge.innerHTML = '1. 불순물 반도체의 전하 이동<span class="block text-[10px] text-slate-400 font-normal">(왼쪽 +극 연결, 오른쪽 -극 연결)</span>';
+        } else if (t === 2) {
+          badge.innerHTML = '2. PN 접합 다이오드 회로<span class="block text-[10px] text-slate-400 font-normal">(순방향 전류 통과 vs 역방향 전류 차단)</span>';
+        } else {
+          badge.innerHTML = '3. NPN 트랜지스터 증폭 회로<span class="block text-[10px] text-slate-400 font-normal">(안쪽 베이스 입력 회로 ➔ 바깥쪽 컬렉터 증폭 회로)</span>';
+        }
+      };
+
+      window.setSemiType = function(type) {
+        state.semiType = type;
+        const btnN = document.getElementById('btn-semi-n');
+        const btnP = document.getElementById('btn-semi-p');
+        if (type === 'N') {
+          btnN.className = 'py-1.5 px-2 rounded-xl font-black text-xs bg-sky-600 text-white border-2 border-sky-400 shadow-md leading-tight';
+          btnP.className = 'py-1.5 px-2 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 border-2 border-slate-700 hover:bg-slate-700 leading-tight';
+        } else {
+          btnP.className = 'py-1.5 px-2 rounded-xl font-black text-xs bg-rose-600 text-white border-2 border-rose-400 shadow-md leading-tight';
+          btnN.className = 'py-1.5 px-2 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 border-2 border-slate-700 hover:bg-slate-700 leading-tight';
+        }
+        updateSemiText();
+      };
+
+      window.toggleSemiPower = function() {
+        state.semiPower = !state.semiPower;
+        const btn = document.getElementById('btn-semi-pwr');
+        if (state.semiPower) {
+          btn.className = 'w-full py-1.5 px-3 rounded-xl font-black text-xs bg-emerald-600 text-white border border-emerald-400 leading-tight';
+          btn.innerHTML = '⚡ 직류 전원 스위치 켜짐<span class="block text-[10px] font-normal opacity-95">(왼쪽 +극 인가, 오른쪽 -극 인가)</span>';
+        } else {
+          btn.className = 'w-full py-1.5 px-3 rounded-xl font-bold text-xs bg-slate-800 text-slate-400 border border-slate-700 leading-tight';
+          btn.innerHTML = '🔌 직류 전원 스위치 꺼짐<span class="block text-[10px] font-normal opacity-80">(전압 인가 중단 상태)</span>';
+        }
+        updateSemiText();
+      };
+
+      function updateSemiText() {
+        const statusEl = document.getElementById('t1-bulb-status');
+        const titleEl = document.getElementById('t1-desc-title');
+        const bodyEl = document.getElementById('t1-desc-body');
+
+        if (!state.semiPower) {
+          statusEl.innerHTML = '⚫ 전구 꺼짐<span class="block text-[10px] font-normal text-slate-500">(전원 스위치 꺼짐)</span>';
+          statusEl.className = 'text-[11px] font-black text-slate-400 text-right leading-tight';
+        } else {
+          statusEl.innerHTML = '💡 전구 켜짐<span class="block text-[10px] font-normal text-amber-200">(전류 정상 흐름)</span>';
+          statusEl.className = 'text-[11px] font-black text-amber-400 text-right leading-tight';
+        }
+
+        if (state.semiType === 'N') {
+          titleEl.innerHTML = 'N형 반도체<span class="block text-[10px] font-semibold text-sky-400/90">(자유 전자가 왼쪽 +극으로 이동)</span>';
+          titleEl.className = 'text-xs text-sky-300 font-black leading-tight';
+          bodyEl.innerHTML = '규소에 인을 섞어 남는 <b>자유 전자</b>가 생겼습니다. 음전하를 띤 자유 전자는 오른쪽 <b>-극에서 밀려나 왼쪽 +극 방향(←)</b>으로 이동하며 전류를 흐르게 합니다.';
+        } else {
+          titleEl.innerHTML = 'P형 반도체<span class="block text-[10px] font-semibold text-rose-400/90">(정공이 오른쪽 -극으로 이동)</span>';
+          titleEl.className = 'text-xs text-rose-300 font-black leading-tight';
+          bodyEl.innerHTML = '규소에 붕소를 섞어 빈자리인 <b>정공</b>이 생겼습니다. 양전하 성질을 가진 정공은 왼쪽 <b>+극에서 밀려나 오른쪽 -극 방향(→)</b>으로 이동하며 전류를 흐르게 합니다.';
+        }
+      }
+
+      window.setDiodeMode = function(mode) {
+        state.diodeMode = mode;
+        const btnFwd = document.getElementById('btn-diode-fwd');
+        const btnRev = document.getElementById('btn-diode-rev');
+        const statusEl = document.getElementById('t2-bulb-status');
+        const titleEl = document.getElementById('t2-desc-title');
+        const bodyEl = document.getElementById('t2-desc-body');
+
+        if (mode === 'forward') {
+          btnFwd.className = 'py-2 px-2 rounded-xl font-black text-xs bg-emerald-600 text-white border-2 border-emerald-400 shadow-md leading-tight text-center';
+          btnRev.className = 'py-2 px-2 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 border-2 border-slate-700 hover:bg-slate-700 leading-tight text-center';
+          statusEl.innerHTML = '💡 전구 켜짐<span class="block text-[10px] font-normal text-amber-200">(순방향 전류 통과)</span>';
+          statusEl.className = 'text-[11px] font-black text-amber-400 text-right leading-tight';
+          titleEl.innerHTML = '순방향 전압 연결<span class="block text-[10px] font-semibold text-emerald-400/90">(장벽 소멸 및 꼬마전구 점등)</span>';
+          titleEl.className = 'text-xs text-emerald-300 font-black leading-tight';
+          bodyEl.innerHTML = 'P형의 <b>정공은 오른쪽(→)</b>으로, N형의 <b>전자는 왼쪽(←)</b>으로 이동해 접합면에서 만납니다. 전지의 -극에서 나온 전자가 꼬마전구를 통과해 <b>환하게 불이 켜집니다.</b>';
+        } else {
+          btnRev.className = 'py-2 px-2 rounded-xl font-black text-xs bg-rose-600 text-white border-2 border-rose-400 shadow-md leading-tight text-center';
+          btnFwd.className = 'py-2 px-2 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 border-2 border-slate-700 hover:bg-slate-700 leading-tight text-center';
+          statusEl.innerHTML = '⚫ 전구 꺼짐<span class="block text-[10px] font-normal text-rose-300">(역방향 전류 차단)</span>';
+          statusEl.className = 'text-[11px] font-black text-rose-400 text-right leading-tight';
+          titleEl.innerHTML = '역방향 전압 연결<span class="block text-[10px] font-semibold text-rose-400/90">(공핍층 장벽 확대 및 전류 차단)</span>';
+          titleEl.className = 'text-xs text-rose-300 font-black leading-tight';
+          bodyEl.innerHTML = 'P형의 정공은 왼쪽 <b>-극 끝으로</b>, N형의 전자는 오른쪽 <b>+극 끝으로</b> 끌려가 중앙에 넓은 공핍층 장벽이 생깁니다. 전자가 흐르지 못해 <b>꼬마전구가 꺼집니다.</b>';
+        }
+      };
+
+      window.setTransistorSignal = function(val) {
+        const v = parseInt(val, 10);
+        state.baseSignal = v;
+        document.getElementById('trSlider').value = v;
+        document.getElementById('t3-slider-label').innerHTML = v === 0
+          ? '0%<span class="block text-[9px] font-normal text-slate-400">(신호 없음)</span>'
+          : `${v}%<span class="block text-[9px] font-normal text-amber-200">(신호 인가 중)</span>`;
+
+        const ib = (v * 0.01).toFixed(2);
+        const ic = (v * 0.8).toFixed(1);
+        document.getElementById('t3-ib-val').textContent = `${ib} mA`;
+        document.getElementById('t3-ic-val').textContent = `${ic} mA`;
+
+        const titleEl = document.getElementById('t3-desc-title');
+        const bodyEl = document.getElementById('t3-desc-body');
+
+        if (v === 0) {
+          titleEl.innerHTML = '스위치 꺼짐 상태<span class="block text-[10px] font-semibold text-rose-400/85">(베이스 장벽에 의해 전류 차단)</span>';
+          titleEl.className = 'text-xs text-rose-400 font-black leading-tight';
+          bodyEl.innerHTML = '마이크 신호가 없으면 베이스 문이 닫혀 있습니다. 대형 전지가 연결되어 있어도 에미터의 전자가 넘어가지 못해 <b>스피커가 울리지 않습니다.</b>';
+        } else if (v < 50) {
+          titleEl.innerHTML = `부분 증폭 작동 중<span class="block text-[10px] font-semibold text-amber-400/90">(입력 ${ib}mA ➔ 출력 ${ic}mA)</span>`;
+          titleEl.className = 'text-xs text-amber-300 font-black leading-tight';
+          bodyEl.innerHTML = '소형 전지와 마이크가 연결된 베이스에 약한 +신호가 걸렸습니다. 에미터의 전자들이 <b>얇은 베이스를 뚫고 컬렉터로 넘어가</b> 스피커를 울립니다.';
+        } else {
+          titleEl.innerHTML = `최대 증폭 작동 중!<span class="block text-[10px] font-semibold text-sky-400/90">(입력 ${ib}mA ➔ 출력 ${ic}mA, 80배 증폭)</span>`;
+          titleEl.className = 'text-xs text-sky-300 font-black leading-tight';
+          bodyEl.innerHTML = '마이크 신호 세기에 비례해 수문이 활짝 열렸습니다! 에미터에서 출발한 <b>수많은 전자 무리가 얇은 베이스를 관통해 컬렉터와 스피커로 왕창 쏟아져 흐릅니다!</b>';
+        }
+      };
+
+      // ==================== 공통 그래픽 유틸리티 ====================
+
+      // 2줄 라벨 텍스트 그리기 유틸리티 (1줄: 제목, 2줄: 괄호 설명)
+      function drawTwoLineText(cx, topY, line1, line2, color1 = '#f8fafc', color2 = '#94a3b8', size1 = 12, size2 = 10) {
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.font = `900 ${size1}px "Noto Sans KR", sans-serif`;
+        ctx.fillStyle = color1;
+        ctx.fillText(line1, cx, topY);
+
+        if (line2) {
+          ctx.font = `700 ${size2}px "Noto Sans KR", sans-serif`;
+          ctx.fillStyle = color2;
+          ctx.fillText(line2, cx, topY + size1 + 2);
+        }
+        ctx.restore();
+      }
+
+      // 상단 2줄 라벨 배지 (반도체 블록 위쪽 여백에 배치, 괄호는 반드시 2번째 줄에 표시)
+      function drawTopBadge2Line(cx, cy, line1, line2, borderColor, bgColor, textColor, targetY) {
+        ctx.save();
+        ctx.font = '900 12px "Noto Sans KR", sans-serif';
+        const w1 = ctx.measureText(line1).width;
+        ctx.font = '700 10px "Noto Sans KR", sans-serif';
+        const w2 = line2 ? ctx.measureText(line2).width : 0;
+
+        const padX = 12;
+        const w = Math.max(w1, w2) + padX * 2;
+        const h = line2 ? 36 : 24;
+        const rx = cx - w / 2;
+        const ry = cy - h / 2;
+
+        // 블록 상단까지 점선 지시선
+        if (targetY !== undefined) {
+          ctx.strokeStyle = borderColor;
+          ctx.lineWidth = 1.8;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(cx, cy + h / 2);
+          ctx.lineTo(cx, targetY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = borderColor;
+          ctx.beginPath();
+          ctx.arc(cx, targetY, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 배지 배경
+        ctx.fillStyle = bgColor;
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(rx, ry, w, h, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // 1줄째: 명칭
+        ctx.fillStyle = textColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '900 12px "Noto Sans KR", sans-serif';
+        ctx.fillText(line1, cx, line2 ? cy - 7 : cy + 1);
+
+        // 2줄째: (괄호 설명)
+        if (line2) {
+          ctx.fillStyle = '#e2e8f0';
+          ctx.font = '700 10px "Noto Sans KR", sans-serif';
+          ctx.fillText(line2, cx, cy + 9);
+        }
+        ctx.restore();
+      }
+
+      // 반도체 양 끝단에 인가된 (+), (-) 극성 표시 배지
+      function drawTerminalPolarity(x, y, sign) {
+        ctx.save();
+        const isPlus = sign === '+';
+        ctx.fillStyle = isPlus ? '#dc2626' : '#2563eb';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 13px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(sign, x, y + 1);
+        ctx.restore();
+      }
+
+      // 전자(-) 입자 그리기
+      function drawElectron(x, y, r = 7.5) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#0284c7';
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#bae6fd';
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `900 ${Math.round(r * 1.4)}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('-', x, y + 1);
+        ctx.restore();
+      }
+
+      // 정공(+, 양공) 빈자리 그리기
+      function drawHole(x, y, r = 7.5) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.28)';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#fb7185';
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffe4e6';
+        ctx.font = `900 ${Math.round(r * 1.35)}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('+', x, y + 1);
+        ctx.restore();
+      }
+
+      // 도선(Wire) 폴리라인 그리기
+      function drawWirePath(points, active = false) {
+        ctx.save();
+        ctx.strokeStyle = active ? '#64748b' : '#334155';
+        ctx.lineWidth = 5.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(points[0][0], points[0][1]);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i][0], points[i][1]);
+        }
+        ctx.stroke();
+
+        ctx.strokeStyle = active ? '#94a3b8' : '#1e293b';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 건전지(Battery) 그리기 — 도선 좌표 (cx, cy) 중앙에 정렬 + 2줄 라벨
+      function drawBatteryOnWire(cx, cy, line1, line2, leftIsPlus = true, scale = 1.0) {
+        ctx.save();
+        const bw = 64 * scale;
+        const bh = 24 * scale;
+        const leftX = cx - bw / 2;
+        const topY = cy - bh / 2;
+
+        // 도선 가림용 배경 패드
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(leftX - 6, topY - 3, bw + 12, bh + 6);
+
+        const leftColor = leftIsPlus ? '#ef4444' : '#2563eb';
+        const rightColor = leftIsPlus ? '#2563eb' : '#ef4444';
+        const leftSign = leftIsPlus ? '+' : '-';
+        const rightSign = leftIsPlus ? '-' : '+';
+
+        // 건전지(+) 돌기
+        ctx.fillStyle = '#cbd5e1';
+        if (leftIsPlus) {
+          ctx.fillRect(leftX - 4 * scale, cy - 5 * scale, 4 * scale, 10 * scale);
+        } else {
+          ctx.fillRect(leftX + bw, cy - 5 * scale, 4 * scale, 10 * scale);
+        }
+
+        // 좌측 절반
+        ctx.fillStyle = leftColor;
+        ctx.beginPath();
+        ctx.roundRect(leftX, topY, bw / 2, bh, [5, 0, 0, 5]);
+        ctx.fill();
+
+        // 우측 절반
+        ctx.fillStyle = rightColor;
+        ctx.beginPath();
+        ctx.roundRect(cx, topY, bw / 2, bh, [0, 5, 5, 0]);
+        ctx.fill();
+
+        // 외곽 테두리
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.roundRect(leftX, topY, bw, bh, 5);
+        ctx.stroke();
+
+        // 극성 기호 (+ / -)
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `900 ${Math.round(14 * scale)}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(leftSign, leftX + bw * 0.25, cy + 1);
+        ctx.fillText(rightSign, leftX + bw * 0.75, cy + 1);
+
+        // 하단 2줄 라벨 (괄호 줄바꿈)
+        if (line1) {
+          drawTwoLineText(cx, topY + bh + 5, line1, line2, '#e2e8f0', '#94a3b8', 11, 9.5);
+        }
+        ctx.restore();
+      }
+
+      // 꼬마전구 그리기 — 도선 (cx, cy) 위에 정렬 + 우측 2줄 라벨
+      function drawBulbOnWire(cx, cy, brightness = 0, line1 = '꼬마전구', line2 = '(출력 기기)') {
+        ctx.save();
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 22, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 점등 후광
+        if (brightness > 0.02) {
+          const grad = ctx.createRadialGradient(cx, cy, 6, cx, cy, 48 * brightness + 16);
+          grad.addColorStop(0, `rgba(250, 204, 21, ${0.85 * brightness})`);
+          grad.addColorStop(0.5, `rgba(250, 204, 21, ${0.35 * brightness})`);
+          grad.addColorStop(1, 'rgba(250, 204, 21, 0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 48 * brightness + 16, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 빛줄기
+          ctx.strokeStyle = `rgba(253, 224, 71, ${0.9 * brightness})`;
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 8; i++) {
+            const ang = (i * Math.PI) / 4 + state.time * 0.02;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(ang) * 23, cy + Math.sin(ang) * 23);
+            ctx.lineTo(cx + Math.cos(ang) * (30 + 8 * brightness), cy + Math.sin(ang) * (30 + 8 * brightness));
+            ctx.stroke();
+          }
+        }
+
+        // 전구 유리구
+        ctx.beginPath();
+        ctx.arc(cx, cy, 19, 0, Math.PI * 2);
+        ctx.fillStyle = brightness > 0.02 ? '#fef08a' : '#1e293b';
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = brightness > 0.02 ? '#facc15' : '#475569';
+        ctx.stroke();
+
+        // 필라멘트
+        ctx.strokeStyle = brightness > 0.02 ? '#ca8a04' : '#64748b';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(cx - 7, cy + 10);
+        ctx.lineTo(cx - 4, cy - 4);
+        ctx.lineTo(cx, cy + 2);
+        ctx.lineTo(cx + 4, cy - 4);
+        ctx.lineTo(cx + 7, cy + 10);
+        ctx.stroke();
+
+        // 우측 2줄 라벨
+        drawTwoLineText(
+          cx + 56, cy - 12,
+          line1, line2,
+          brightness > 0.02 ? '#fde047' : '#cbd5e1',
+          brightness > 0.02 ? '#fef08a' : '#64748b',
+          11.5, 9.5
+        );
+        ctx.restore();
+      }
+
+      // 마이크 그리기 — 수평 도선 (cx, cy) 위에 정렬 + 하단 2줄 라벨
+      function drawMicrophoneOnWire(cx, cy, signalLevel = 0) {
+        ctx.save();
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 음파 표시
+        if (signalLevel > 0) {
+          const norm = signalLevel / 100;
+          for (let i = 1; i <= 2; i++) {
+            const r = 19 + i * 6 + ((state.time * 0.5) % 8);
+            ctx.strokeStyle = `rgba(52, 211, 153, ${(1 - i * 0.35) * norm})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, -Math.PI * 0.78, -Math.PI * 0.22);
+            ctx.stroke();
+          }
+        }
+
+        // 마이크 원형 바디
+        ctx.fillStyle = signalLevel > 0 ? '#065f46' : '#1e293b';
+        ctx.strokeStyle = signalLevel > 0 ? '#34d399' : '#64748b';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 17, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // 마이크 심볼
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.roundRect(cx - 4, cy - 9, 8, 11, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(cx, cy - 3, 6.5, 0, Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + 4);
+        ctx.lineTo(cx, cy + 9);
+        ctx.stroke();
+
+        // 하단 2줄 라벨 (괄호 줄바꿈)
+        drawTwoLineText(
+          cx, cy + 21,
+          '마이크', '(입력 신호)',
+          signalLevel > 0 ? '#6ee7b7' : '#e2e8f0',
+          '#94a3b8',
+          11, 9.5
+        );
+        ctx.restore();
+      }
+
+      // 스피커 그리기 — 하단 수평 도선 (cx, cy) 위에 일직선 정렬 + 하단 2줄 라벨
+      function drawSpeakerOnWire(cx, cy, signalLevel = 0) {
+        ctx.save();
+        const norm = signalLevel / 100;
+
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 22, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 출력 후광
+        if (norm > 0) {
+          const grad = ctx.createRadialGradient(cx, cy, 6, cx, cy, 46 * norm + 18);
+          grad.addColorStop(0, `rgba(56, 189, 248, ${0.6 * norm})`);
+          grad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 46 * norm + 18, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 스피커 원형 바디
+        ctx.fillStyle = norm > 0 ? '#0c4a6e' : '#1e293b';
+        ctx.strokeStyle = norm > 0 ? '#38bdf8' : '#64748b';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 19, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // 스피커 혼 심볼
+        ctx.fillStyle = norm > 0 ? '#fde047' : '#cbd5e1';
+        ctx.beginPath();
+        ctx.moveTo(cx - 9, cy - 5);
+        ctx.lineTo(cx - 2, cy - 5);
+        ctx.lineTo(cx + 7, cy - 11);
+        ctx.lineTo(cx + 7, cy + 11);
+        ctx.lineTo(cx - 2, cy + 5);
+        ctx.lineTo(cx - 9, cy + 5);
+        ctx.closePath();
+        ctx.fill();
+
+        // 음파 확산 애니메이션
+        if (norm > 0) {
+          const waveCount = norm > 0.5 ? 3 : 2;
+          for (let i = 1; i <= waveCount; i++) {
+            const r = 14 + i * 9 + ((state.time * (0.8 + norm * 1.5)) % 9);
+            ctx.strokeStyle = `rgba(250, 204, 21, ${(1.1 - i * 0.28) * norm})`;
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            ctx.arc(cx + 4, cy, r, -Math.PI * 0.3, Math.PI * 0.3);
+            ctx.stroke();
+          }
+        }
+
+        // 하단 2줄 라벨 (괄호 줄바꿈)
+        drawTwoLineText(
+          cx, cy + 22,
+          '스피커', '(증폭 출력)',
+          norm > 0 ? '#7dd3fc' : '#e2e8f0',
+          '#94a3b8',
+          11, 9.5
+        );
+        ctx.restore();
+      }
+
+      // 폴리라인 경로 위에서 비율 t (0.0 ~ 1.0) 위치의 (x, y) 좌표 반환
+      function getPointOnPolyline(pts, t) {
+        let totalLen = 0;
+        const segLens = [];
+        for (let i = 0; i < pts.length - 1; i++) {
+          const dx = pts[i + 1][0] - pts[i][0];
+          const dy = pts[i + 1][1] - pts[i][1];
+          const len = Math.hypot(dx, dy);
+          segLens.push(len);
+          totalLen += len;
+        }
+        let target = ((t % 1) + 1) % 1 * totalLen;
+        for (let i = 0; i < segLens.length; i++) {
+          if (target <= segLens[i] || i === segLens.length - 1) {
+            const ratio = segLens[i] === 0 ? 0 : target / segLens[i];
+            return {
+              x: pts[i][0] + (pts[i + 1][0] - pts[i][0]) * ratio,
+              y: pts[i][1] + (pts[i + 1][1] - pts[i][1]) * ratio,
+              segIndex: i
+            };
+          }
+          target -= segLens[i];
+        }
+        return { x: pts[0][0], y: pts[0][1], segIndex: 0 };
+      }
+
+      // ==================== [탭 1] 반도체 원리 렌더링 ====================
+      function renderTab1() {
+        const bx = 200, by = 88, bw = 360, bh = 80;
+        const midY = by + bh / 2; // 128
+        const wireBottomY = 265;
+
+        // 1. 폐회로 도선
+        const wirePts = [
+          [bx, midY], [115, midY], [115, wireBottomY], [645, wireBottomY], [645, midY], [bx + bw, midY]
+        ];
+        drawWirePath(wirePts, state.semiPower);
+
+        // 2. 반도체 블록 배경 및 격자
+        const isN = state.semiType === 'N';
+        ctx.save();
+        ctx.fillStyle = isN ? 'rgba(14, 165, 233, 0.15)' : 'rgba(244, 63, 94, 0.15)';
+        ctx.strokeStyle = isN ? '#38bdf8' : '#fb7185';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, bw, bh, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // 규소 격자선
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.16)';
+        ctx.lineWidth = 1;
+        for (let x = bx + 45; x < bx + bw; x += 45) {
+          ctx.beginPath(); ctx.moveTo(x, by); ctx.lineTo(x, by + bh); ctx.stroke();
+        }
+        ctx.beginPath(); ctx.moveTo(bx, midY); ctx.lineTo(bx + bw, midY); ctx.stroke();
+        ctx.restore();
+
+        // 양 끝단 인가 극성 마커 (왼쪽 = +극, 오른쪽 = -극)
+        if (state.semiPower) {
+          drawTerminalPolarity(bx - 14, midY, '+');
+          drawTerminalPolarity(bx + bw + 14, midY, '-');
+        }
+
+        // 3. 상단 2줄 배지 (괄호 줄바꿈)
+        if (isN) {
+          drawTopBadge2Line(
+            bx + bw / 2, 36,
+            'N형 반도체',
+            '(자유 전자 다수 · 왼쪽 +극으로 이동)',
+            '#38bdf8', '#0c4a6e', '#e0f2fe', by
+          );
+        } else {
+          drawTopBadge2Line(
+            bx + bw / 2, 36,
+            'P형 반도체',
+            '(정공 다수 · 오른쪽 -극으로 이동)',
+            '#fb7185', '#881337', '#ffe4e6', by
+          );
+        }
+
+        // 4. 진행도 업데이트
+        if (state.semiPower) {
+          state.semiProgress = (state.semiProgress + 0.004) % 1;
+        }
+
+        // (a) 외부 도선 전자(-) 이동
+        const rightWirePath = [[416, wireBottomY], [645, wireBottomY], [645, midY], [bx + bw, midY]];
+        const leftWirePath = [[bx, midY], [115, midY], [115, wireBottomY], [344, wireBottomY]];
+
+        for (let i = 0; i < 6; i++) {
+          const t = (i / 6 + state.semiProgress) % 1;
+          const pR = getPointOnPolyline(rightWirePath, t);
+          const pL = getPointOnPolyline(leftWirePath, t);
+          if (!(Math.abs(pR.x - 645) < 5 && Math.abs(pR.y - 196) < 20)) {
+            drawElectron(pR.x, pR.y, 6.5);
+          }
+          drawElectron(pL.x, pL.y, 6.5);
+        }
+
+        // (b) 반도체 내부 전하 운반자 이동
+        const cols = 6;
+        if (isN) {
+          // N형: 자유 전자(-)가 오른쪽(-극)에서 왼쪽(+극)으로 이동 (← 방향)
+          for (let c = 0; c < cols; c++) {
+            const prog = (c / cols + state.semiProgress * 2.2) % 1;
+            const ex = (bx + bw - 22) - prog * (bw - 44);
+            drawElectron(ex, by + 22, 8);
+            drawElectron(ex, by + 58, 8);
+          }
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = '900 12px "Noto Sans KR", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('⬅ 자유 전자(-) 이동 방향 : 왼쪽 (+)극 쪽으로 이동', bx + bw / 2, by + bh + 20);
+        } else {
+          // P형: 정공(+)이 왼쪽(+극)에서 오른쪽(-극)으로 이동 (→ 방향)
+          for (let c = 0; c < cols; c++) {
+            const prog = (c / cols + state.semiProgress * 2.2) % 1;
+            const hx = (bx + 22) + prog * (bw - 44);
+            drawHole(hx, by + 22, 8);
+            drawHole(hx, by + 58, 8);
+          }
+          ctx.fillStyle = '#fb7185';
+          ctx.font = '900 12px "Noto Sans KR", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('정공(+) 이동 방향 : 오른쪽 (-)극 쪽으로 이동 ➔', bx + bw / 2, by + bh + 20);
+        }
+
+        // 5. 하단 전지 및 우측 꼬마전구
+        drawBatteryOnWire(380, wireBottomY, '직류 전원', '(왼쪽 +극, 오른쪽 -극)', true, 1.0);
+        drawBulbOnWire(645, 196, state.semiPower ? 1.0 : 0.0, '꼬마전구', '(출력 기기)');
+      }
+
+      // ==================== [탭 2] 다이오드 회로 렌더링 ====================
+      function renderTab2() {
+        const bx = 200, by = 88, bw = 360, bh = 80;
+        const jx = bx + bw / 2; // 380
+        const midY = by + bh / 2; // 128
+        const wireBottomY = 265;
+        const isFwd = state.diodeMode === 'forward';
+
+        const targetBarrier = isFwd ? 8 : 124;
+        state.barrierWidth += (targetBarrier - state.barrierWidth) * 0.14;
+
+        // 1. 폐회로 도선
+        const wirePts = [
+          [bx, midY], [115, midY], [115, wireBottomY], [645, wireBottomY], [645, midY], [bx + bw, midY]
+        ];
+        drawWirePath(wirePts, isFwd);
+
+        // 2. P형(좌) 및 N형(우) 블록 그리기
+        ctx.save();
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.16)';
+        ctx.strokeStyle = '#fb7185';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, bw / 2, bh, [8, 0, 0, 8]);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(14, 165, 233, 0.16)';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(jx, by, bw / 2, bh, [0, 8, 8, 0]);
+        ctx.fill();
+        ctx.stroke();
+
+        // 중앙 공핍층(장벽)
+        const bLeft = jx - state.barrierWidth / 2;
+        ctx.fillStyle = isFwd ? 'rgba(250, 204, 21, 0.25)' : 'rgba(15, 23, 42, 0.94)';
+        ctx.fillRect(bLeft, by + 2, state.barrierWidth, bh - 4);
+        ctx.strokeStyle = isFwd ? '#facc15' : '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(bLeft, by + 2, state.barrierWidth, bh - 4);
+
+        if (!isFwd && state.barrierWidth > 60) {
+          drawTwoLineText(jx, midY - 14, '⛔ 공핍층 장벽 확대', '(전류 완벽 차단)', '#fca5a5', '#94a3b8', 12, 10);
+        }
+        ctx.restore();
+
+        drawTerminalPolarity(bx - 14, midY, isFwd ? '+' : '-');
+        drawTerminalPolarity(bx + bw + 14, midY, isFwd ? '-' : '+');
+
+        // 3. 상단 2줄 라벨 배지
+        drawTopBadge2Line(
+          bx + bw * 0.25, 36,
+          'P형 반도체',
+          '(정공 다수)',
+          '#fb7185', '#881337', '#ffe4e6', by
+        );
+        drawTopBadge2Line(
+          bx + bw * 0.75, 36,
+          'N형 반도체',
+          '(자유 전자 다수)',
+          '#38bdf8', '#0c4a6e', '#e0f2fe', by
+        );
+
+        // 4. 순방향 vs 역방향 전하 이동 애니메이션
+        if (isFwd) {
+          state.diodeProgress = (state.diodeProgress + 0.0045) % 1;
+
+          const rightWire = [[416, wireBottomY], [645, wireBottomY], [645, midY], [bx + bw, midY]];
+          const leftWire = [[bx, midY], [115, midY], [115, wireBottomY], [344, wireBottomY]];
+
+          for (let i = 0; i < 6; i++) {
+            const t = (i / 6 + state.diodeProgress) % 1;
+            const pR = getPointOnPolyline(rightWire, t);
+            const pL = getPointOnPolyline(leftWire, t);
+            if (!(Math.abs(pR.x - 645) < 5 && Math.abs(pR.y - 196) < 20)) {
+              drawElectron(pR.x, pR.y, 6.5);
+            }
+            drawElectron(pL.x, pL.y, 6.5);
+          }
+
+          for (let i = 0; i < 4; i++) {
+            const t = (i / 4 + state.diodeProgress * 1.6) % 1;
+            const hx = (bx + 18) + t * (bw / 2 - 26);
+            const ex = (bx + bw - 18) - t * (bw / 2 - 26);
+            drawHole(hx, by + 22, 7.5);
+            drawHole(hx, by + 58, 7.5);
+            drawElectron(ex, by + 22, 7.5);
+            drawElectron(ex, by + 58, 7.5);
+          }
+
+          ctx.fillStyle = '#34d399';
+          ctx.font = '900 12px "Noto Sans KR", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('정공(+) 오른쪽 이동 ➔  |  ⬅ 전자(-) 왼쪽 이동', jx, by + bh + 20);
+        } else {
+          for (let i = 0; i < 4; i++) {
+            const col = i % 2;
+            const row = Math.floor(i / 2);
+            const jitter = Math.sin(state.time * 0.08 + i) * 1.8;
+            drawHole(bx + 22 + col * 24 + jitter, by + 22 + row * 36, 7.5);
+            drawElectron(bx + bw - 22 - col * 24 - jitter, by + 22 + row * 36, 7.5);
+          }
+
+          ctx.fillStyle = '#f87171';
+          ctx.font = '900 12px "Noto Sans KR", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('⬅ 정공(+) 왼쪽 끌림  |  전자(-) 오른쪽 끌림 ➔', jx, by + bh + 20);
+        }
+
+        // 5. 건전지 및 꼬마전구
+        drawBatteryOnWire(
+          380, wireBottomY,
+          isFwd ? '순방향 전원' : '역방향 전원',
+          isFwd ? '(P형에 +, N형에 -)' : '(P형에 -, N형에 +)',
+          isFwd,
+          1.0
+        );
+        drawBulbOnWire(645, 196, isFwd ? 1.0 : 0.0, '꼬마전구', '(출력 기기)');
+      }
+
+      // ==================== [탭 3] 트랜지스터 증폭 회로 렌더링 ====================
+      function renderTab3() {
+        const ty = 70, th = 64, midY = 102;
+        const xE = 165, wE = 135; // 에미터(N): 165 ~ 300
+        const xB = 300, wB = 50;  // 얇은 베이스(P): 300 ~ 350
+        const xC = 350, wC = 190; // 컬렉터(N): 350 ~ 540
+
+        const innerWireY = 200; // 안쪽 루프 (소형 전지 + 마이크 일직선 배치)
+        const outerWireY = 285; // 바깥쪽 루프 (대형 전지 + 스피커 일직선 배치)
+        const leftWireX = 80;
+        const baseWireX = 325;
+        const rightWireX = 660;
+
+        const sig = state.baseSignal;
+        const norm = sig / 100;
+
+        // 1. 평면 회로 도선 그리기
+        drawWirePath([[xE, midY], [leftWireX, midY], [leftWireX, outerWireY]], sig > 0);
+        drawWirePath([[leftWireX, innerWireY], [baseWireX, innerWireY], [baseWireX, ty + th]], sig > 0);
+        drawWirePath([[leftWireX, outerWireY], [rightWireX, outerWireY], [rightWireX, midY], [xC + wC, midY]], sig > 0);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath();
+        ctx.arc(leftWireX, innerWireY, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2. NPN 트랜지스터 블록 그리기
+        ctx.save();
+        ctx.fillStyle = 'rgba(14, 165, 233, 0.18)';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(xE, ty, wE, th, [8, 0, 0, 8]);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = sig > 0 ? 'rgba(244, 63, 94, 0.35)' : 'rgba(244, 63, 94, 0.18)';
+        ctx.strokeStyle = '#fb7185';
+        ctx.lineWidth = 3;
+        ctx.fillRect(xB, ty, wB, th);
+        ctx.strokeRect(xB, ty, wB, th);
+
+        ctx.fillStyle = 'rgba(14, 165, 233, 0.18)';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(xC, ty, wC, th, [0, 8, 8, 0]);
+        ctx.fill();
+        ctx.stroke();
+
+        if (sig === 0) {
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.88)';
+          ctx.fillRect(xB - 3, ty + 2, 6, th - 4);
+        }
+        ctx.restore();
+
+        // 3. 상단 2줄 라벨 배지
+        drawTopBadge2Line(xE + wE / 2, 28, '에미터', '(N형 반도체)', '#38bdf8', '#0c4a6e', '#e0f2fe', ty);
+        drawTopBadge2Line(xB + wB / 2, 28, '얇은 베이스', '(P형 반도체)', '#fb7185', '#881337', '#ffe4e6', ty);
+        drawTopBadge2Line(xC + wC / 2, 28, '컬렉터', '(N형 반도체)', '#38bdf8', '#0c4a6e', '#e0f2fe', ty);
+
+        // 4. 전자(-) 이동 애니메이션
+        if (sig === 0) {
+          for (let i = 0; i < 8; i++) {
+            const col = i % 4;
+            const row = Math.floor(i / 4);
+            const jx = Math.sin(state.time * 0.08 + i) * 1.8;
+            drawElectron(xE + 24 + col * 28 + jx, ty + 20 + row * 24, 7);
+          }
+          drawHole(xB + wB / 2, ty + 20, 6.5);
+          drawHole(xB + wB / 2, ty + 44, 6.5);
+        } else {
+          // (1) 안쪽 베이스-에미터 루프 전자 흐름
+          const baseLoopPts = [
+            [126, innerWireY], [leftWireX, innerWireY], [leftWireX, midY],
+            [baseWireX, midY], [baseWireX, innerWireY], [184, innerWireY]
+          ];
+          const baseSpeed = 0.0022 + norm * 0.0038;
+          const activeBaseCount = Math.max(3, Math.floor(norm * 10));
+
+          for (let i = 0; i < activeBaseCount; i++) {
+            const p = state.baseParticles[i];
+            p.prog = (p.prog + baseSpeed) % 1;
+            const pt = getPointOnPolyline(baseLoopPts, p.prog);
+            if (Math.abs(pt.y - innerWireY) < 5 && Math.abs(pt.x - 255) < 18) continue;
+            drawElectron(pt.x, pt.y, 6);
+          }
+
+          // (2) 바깥쪽 컬렉터-에미터 증폭 루프 전자 흐름
+          const collLoopPts = [
+            [225, outerWireY], [leftWireX, outerWireY], [leftWireX, midY],
+            [xE, midY], [xC + wC, midY], [rightWireX, midY],
+            [rightWireX, outerWireY], [295, outerWireY]
+          ];
+          const collSpeed = 0.004 + norm * 0.0095;
+          const activeCollCount = Math.max(8, Math.floor(norm * state.collParticles.length));
+
+          for (let i = 0; i < activeCollCount; i++) {
+            const p = state.collParticles[i];
+            p.prog = (p.prog + collSpeed) % 1;
+            const pt = getPointOnPolyline(collLoopPts, p.prog);
+
+            if (Math.abs(pt.y - outerWireY) < 5 && Math.abs(pt.x - 490) < 20) continue;
+
+            if (pt.segIndex === 3) {
+              drawElectron(pt.x, pt.y + p.laneOffset, 7);
+            } else {
+              drawElectron(pt.x, pt.y, 7);
+            }
+          }
+        }
+
+        // 5. 도선 위에 일직선으로 정렬된 4대 소자 그리기
+        drawBatteryOnWire(155, innerWireY, '소형 전지', '(1.5V 전원)', false, 0.88);
+        drawMicrophoneOnWire(255, innerWireY, sig);
+
+        drawBatteryOnWire(260, outerWireY, '대형 전지', '(9V 메인 전원)', false, 1.05);
+        drawSpeakerOnWire(490, outerWireY, sig);
+      }
+
+      // ==================== 메인 애니메이션 루프 ====================
+      function animate() {
+        state.time += 1;
+        ctx.clearRect(0, 0, W, H);
+
+        if (state.tab === 1) {
+          renderTab1();
+        } else if (state.tab === 2) {
+          renderTab2();
+        } else if (state.tab === 3) {
+          renderTab3();
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      // 초기 실행
+      updateSemiText();
+      animate();
+    })();
+  </script>
+</body>
+</html>
